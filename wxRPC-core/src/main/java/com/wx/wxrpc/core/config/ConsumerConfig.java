@@ -10,13 +10,15 @@ import com.wx.wxrpc.core.reflect.api.reflect;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 
 @Configuration
-public class ConsumerConfig  {
+public class ConsumerConfig implements EnvironmentAware {
 
 
    /* @ConditionalOnProperty(prefix = "wxrpc.reflect.type" , value = "jdk")
@@ -54,8 +56,20 @@ public class ConsumerConfig  {
      * 配置一个默认的负载均衡器，固定选择第一个
      * @return
      */
+    private Environment environment;
     @Bean
     public LoadBalance loadBalance(){
-        return new RoundRobinLoadBalance();
+        String property = environment.getProperty("wxrpc.loadbalance");
+        if(property==null || property.isBlank()|| property.equals("random")){
+            return LoadBalance.DEFAULT;
+        } else if (property.equals("roundrobin")) {
+            return new RoundRobinLoadBalance();
+        }
+        return LoadBalance.DEFAULT;
+    }
+
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 }
