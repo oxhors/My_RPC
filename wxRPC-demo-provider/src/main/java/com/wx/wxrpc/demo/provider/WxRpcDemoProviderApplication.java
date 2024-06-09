@@ -11,6 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
 import org.springframework.web.bind.annotation.RequestBody;
 
+//demo 提供者，引入core依赖，提供rpc服务，通过http请求
 @SpringBootApplication
 @Import(BootConfig.class)
 public class WxRpcDemoProviderApplication {

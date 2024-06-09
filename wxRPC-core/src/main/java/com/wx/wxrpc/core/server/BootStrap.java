@@ -56,7 +56,9 @@ public class BootStrap implements ApplicationContextAware {
         String serviceName = request.getServiceName();
         Object service = serviceMap.get(serviceName);
         //拿到实现对象
-
+        if(service == null){
+            return new RpcResponse<>(false,"no such service");
+        }
 
         String methodName = request.getMethodName();
         Class<?>[] paras = request.getParas();
@@ -71,12 +73,13 @@ public class BootStrap implements ApplicationContextAware {
         try {
             Class<?> serviceClass = Class.forName(serviceName);
             Method method = serviceClass.getMethod(methodName,paras);
+            // 有对应的服务实例，以及方法,反射调用
             Object ret = method.invoke(service, args);
             return new RpcResponse<>(true,ret);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return new RpcResponse<>(false,null);
+        return new RpcResponse<>(false,"服务调用失败");
     }
 
 }

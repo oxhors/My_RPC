@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(value = "/test")
+@RequestMapping(value = "")
 public class TestProvider {
     @Autowired
     UserService userService;
 
     //接受客户端发起的rpc请求，返回Json形式的字符串
-    @PostMapping(value = "")
+    @PostMapping()
     public RpcResponse<?> findUserById(@RequestBody RpcRequest request){
         RpcResponse<?> response = invoke(request);
         System.out.println(response.toString());
@@ -27,7 +27,7 @@ public class TestProvider {
 
     @Autowired
     BootStrap client;
-    public RpcResponse<?> invoke(RpcRequest request){
+    private RpcResponse<?> invoke(RpcRequest request){
         //反射调用
         // String serviceName = request.getServiceName();
         //handler.

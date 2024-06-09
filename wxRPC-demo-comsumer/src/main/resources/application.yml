@@ -1,0 +1,9 @@
+
+wxrpc:
+  reflect:
+    type: jdk
+
+
+
+server:
+  port: 8081

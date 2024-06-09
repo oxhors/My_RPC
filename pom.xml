@@ -23,6 +23,7 @@
         <module>wxRPC-core</module>
         <module>wxRPC-demo-api</module>
         <module>wxRPC-demo-provider</module>
+        <module>wxRPC-demo-comsumer</module>
     </modules>
     <dependencies>
         <dependency>
