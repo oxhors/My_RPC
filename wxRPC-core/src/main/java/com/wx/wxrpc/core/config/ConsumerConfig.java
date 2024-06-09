@@ -68,6 +68,17 @@ public class ConsumerConfig implements EnvironmentAware {
         return LoadBalance.DEFAULT;
     }
 
+    @Bean
+    public reflect reflect(){
+        String property = environment.getProperty("wxrpc.reflect.type");
+        if(property == null || property.isBlank() || property.equals("jdk")){
+            return new JdkReflect();
+        } else if (property.equals("cglib")) {
+            return new CglibReflect();
+        }
+        return new JdkReflect();
+    }
+
     @Override
     public void setEnvironment(Environment environment) {
         this.environment = environment;

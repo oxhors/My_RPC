@@ -31,8 +31,14 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
     private ApplicationContext applicationContext;
     private Environment environment;
 
-    // @Autowired
-    private reflect reflectHandler = new JdkReflect();
+    @Autowired
+    private reflect reflectHandler ;
+
+    @Autowired
+    private Router router;
+
+    @Autowired
+    private LoadBalance loadBalance;
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         //获取容器
@@ -56,9 +62,8 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
         String serverUrls = environment.getProperty("wxrpc.providers");
 
         List<String> urls = Lists.newArrayList(Splitter.on(",").trimResults().omitEmptyStrings().split(serverUrls));
-        Router router = applicationContext.getBean(Router.class);
-        LoadBalance loadBalance = applicationContext.getBean(LoadBalance.class);
-
+        //Router router = applicationContext.getBean(Router.class);
+        //LoadBalance loadBalance = applicationContext.getBean(LoadBalance.class);
         //保存路由器，选择器
         RpcContext rpcContext = new RpcContext(loadBalance,router);
         //不空
