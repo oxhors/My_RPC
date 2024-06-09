@@ -3,7 +3,7 @@ wxrpc:
   reflect:
     type: jdk
   providers: http://localhost:8081,http://localhost:8082,http://localhost:8083
-  loadbalance:
+  loadbalance: roundrobin
 
 
 server:

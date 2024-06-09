@@ -1,40 +1,51 @@
-package com.wx.wxrpc.core.reflect.api.impl;
+package com.wx.wxrpc.core.reflect.impl;
 
+import com.google.common.base.Strings;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.wx.wxrpc.core.entity.RpcRequest;
 import com.wx.wxrpc.core.entity.RpcResponse;
-import com.wx.wxrpc.core.loadbalance.LoadBalance;
-import com.wx.wxrpc.core.loadbalance.Router;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
-import com.wx.wxrpc.core.reflect.api.reflect;
+import com.wx.wxrpc.core.reflect.reflect;
+import com.wx.wxrpc.core.registry.RegisterCenter;
 import com.wx.wxrpc.core.utils.MethodUtils;
 import lombok.SneakyThrows;
 import okhttp3.*;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.validation.ObjectError;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 //@ConditionalOnProperty(prefix = "wxrpc.reflect.type" , value = "jdk")
 public class JdkReflect implements reflect {
     @Override
-    public Object getProxyInstance(String serviceName, List<String> urls, RpcContext rpcContext) {
+    public Object getProxyInstance(String serviceName, RpcContext rpcContext, RegisterCenter registerCenter) {
         Object res = null;
         try {
+            List<String> nodes = registerCenter.findAll(serviceName);
+            List<String> urls = createProviders(nodes);
+            //注册回调函数，invoke方法会使用这个urls，所以urls变化会被感知
+            registerCenter.subscribe(serviceName,(event) ->{
+                //订阅服务变化，更新
+                urls.clear();
+                urls.addAll(createProviders(event.getNodes()));
+            });
+
             Class<?> interfaceClass = Class.forName(serviceName);
             res = Proxy.newProxyInstance(this.getClass().getClassLoader(), new Class[]{interfaceClass},new JdkInvocationHandler(serviceName, urls, rpcContext));
             return res;
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<String> createProviders(List<String> nodes){
+        return nodes.stream().map(node -> Strings.lenientFormat("http://%s",node.replace("_",":"))).toList();
     }
 
     private final OkHttpClient okHttpClient = new OkHttpClient.Builder()
@@ -49,6 +60,7 @@ public class JdkReflect implements reflect {
     class JdkInvocationHandler implements InvocationHandler {
         private final String serviceName;
 
+        //引用
         private List<String> urls;
 
         private RpcContext rpcContext;

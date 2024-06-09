@@ -6,23 +6,18 @@ import com.wx.wxrpc.core.annoation.RpcReference;
 import com.wx.wxrpc.core.loadbalance.LoadBalance;
 import com.wx.wxrpc.core.loadbalance.Router;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
-import com.wx.wxrpc.core.reflect.api.impl.JdkReflect;
-import com.wx.wxrpc.core.reflect.api.reflect;
+import com.wx.wxrpc.core.reflect.reflect;
+import com.wx.wxrpc.core.registry.RegisterCenter;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
-import org.springframework.validation.ObjectError;
 
 import java.lang.reflect.Field;
-import java.net.URI;
 import java.util.*;
-import java.util.stream.Collectors;
 
 // 1 扫描所有标注reference的字段，注入动态代理对象，代理对象发送http请求完成远程调用
 @Component
@@ -59,12 +54,14 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
     private Map<String,Object> proxyServers = new HashMap<>();
     private void setFiledsWithReferenceAnnotation(String[] beanDefinitionNames) throws IllegalAccessException, ClassNotFoundException {
         //TODO 读取配置的服务地址，准备扩展为注册中心实现
-        String serverUrls = environment.getProperty("wxrpc.providers");
+        //String serverUrls = environment.getProperty("wxrpc.providers");
 
-        List<String> urls = Lists.newArrayList(Splitter.on(",").trimResults().omitEmptyStrings().split(serverUrls));
+       // List<String> urls = Lists.newArrayList(Splitter.on(",").trimResults().omitEmptyStrings().split(serverUrls));
         //Router router = applicationContext.getBean(Router.class);
         //LoadBalance loadBalance = applicationContext.getBean(LoadBalance.class);
         //保存路由器，选择器
+        RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
+
         RpcContext rpcContext = new RpcContext(loadBalance,router);
         //不空
         for (String def : beanDefinitionNames) {
@@ -89,7 +86,7 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
                     field.set(o,proxyServer);
                 }else{
                     //创建代理对象并放入缓存
-                    Object proxyServer = reflectHandler.getProxyInstance(serviceName,urls,rpcContext);
+                    Object proxyServer = reflectHandler.getProxyInstance(serviceName,rpcContext,registerCenter);
                     proxyServers.put(serviceName,proxyServer);
                     field.setAccessible(true);
                     field.set(o,proxyServer);
