@@ -72,9 +72,10 @@ public class BootStrap implements ApplicationContextAware {
         Object[] args = request.getArgs();
         try {
             Class<?> serviceClass = Class.forName(serviceName);
-            Method method = serviceClass.getMethod(methodName,paras);
+
+            Method method = serviceClass.getMethod(methodName,paras/*支持方法重载*/);
             // 有对应的服务实例，以及方法,反射调用
-            Object ret = method.invoke(service, args);
+            Object ret = method.invoke(service, args/*如果不实现重载，在这里肯定会出现反射调用失败，因为参数不一致*/);
             return new RpcResponse<>(true,ret);
         } catch (Exception e) {
             e.printStackTrace();

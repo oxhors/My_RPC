@@ -9,4 +9,8 @@ import org.springframework.stereotype.Service;
 public interface UserService {
 
     public User findById(Integer uid);
+
+    public User findById(Integer uid,String name);
+
+    public long findLongId(long id);
 }

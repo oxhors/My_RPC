@@ -29,8 +29,15 @@ public class WxRpcDemoComsumerApplication {
     //@Order()
     public ApplicationRunner applicationRunner2(){
         return x ->{
-            User userServiceById = userService.findById(1000);
-            System.out.println(userServiceById);
+            for(int i=0;i<6;i++){
+                User user1 = userService.findById(1000);
+                System.out.println(user1);
+            }
+            // User{uid=1000, name='Wx1717915656688'}
+//            User user2 = userService.findById(888,"reload");
+//            System.out.println(user2);       // User{uid=888, name='方法重载reload'}
+//            System.out.println(userService.toString()); // null
+           // System.out.println(userService.findLongId(100L));
         };
     }
 

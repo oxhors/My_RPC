@@ -1,6 +1,11 @@
 package com.wx.wxrpc.core.consumer;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
 import com.wx.wxrpc.core.annoation.RpcReference;
+import com.wx.wxrpc.core.loadbalance.LoadBalance;
+import com.wx.wxrpc.core.loadbalance.Router;
+import com.wx.wxrpc.core.loadbalance.RpcContext;
 import com.wx.wxrpc.core.reflect.api.impl.JdkReflect;
 import com.wx.wxrpc.core.reflect.api.reflect;
 import org.springframework.beans.BeansException;
@@ -9,18 +14,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.ObjectError;
 
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
 // 1 扫描所有标注reference的字段，注入动态代理对象，代理对象发送http请求完成远程调用
 @Component
-public class Consumer implements ApplicationContextAware{
+public class Consumer implements ApplicationContextAware, EnvironmentAware {
 
     private ApplicationContext applicationContext;
+    private Environment environment;
 
     // @Autowired
     private reflect reflectHandler = new JdkReflect();
@@ -33,7 +42,6 @@ public class Consumer implements ApplicationContextAware{
 
 
     //属性设置之后执行该方法
-
     public void scanFileds() throws Exception {
         String[] beanDefinitionNames = applicationContext.getBeanDefinitionNames();
 
@@ -44,6 +52,15 @@ public class Consumer implements ApplicationContextAware{
     //保存服务接口对应的代理对象，内部通过http请求发起远程调用
     private Map<String,Object> proxyServers = new HashMap<>();
     private void setFiledsWithReferenceAnnotation(String[] beanDefinitionNames) throws IllegalAccessException, ClassNotFoundException {
+        //TODO 读取配置的服务地址，准备扩展为注册中心实现
+        String serverUrls = environment.getProperty("wxrpc.providers");
+
+        List<String> urls = Lists.newArrayList(Splitter.on(",").trimResults().omitEmptyStrings().split(serverUrls));
+        Router router = applicationContext.getBean(Router.class);
+        LoadBalance loadBalance = applicationContext.getBean(LoadBalance.class);
+
+        //保存路由器，选择器
+        RpcContext rpcContext = new RpcContext(loadBalance,router);
         //不空
         for (String def : beanDefinitionNames) {
             //while()
@@ -67,7 +84,7 @@ public class Consumer implements ApplicationContextAware{
                     field.set(o,proxyServer);
                 }else{
                     //创建代理对象并放入缓存
-                    Object proxyServer = reflectHandler.getProxyInstance(serviceName);
+                    Object proxyServer = reflectHandler.getProxyInstance(serviceName,urls,rpcContext);
                     proxyServers.put(serviceName,proxyServer);
                     field.setAccessible(true);
                     field.set(o,proxyServer);
@@ -93,5 +110,14 @@ public class Consumer implements ApplicationContextAware{
            clazz = clazz.getSuperclass();
        }
         return res;
+    }
+
+    /**
+     * 获取环境变量
+     * @param environment
+     */
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 }

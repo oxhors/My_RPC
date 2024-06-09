@@ -1,6 +1,9 @@
 package com.wx.wxrpc.core.config;
 
 import com.wx.wxrpc.core.consumer.Consumer;
+import com.wx.wxrpc.core.loadbalance.LoadBalance;
+import com.wx.wxrpc.core.loadbalance.Router;
+import com.wx.wxrpc.core.loadbalance.impl.RoundRobinLoadBalance;
 import com.wx.wxrpc.core.reflect.api.impl.CglibReflect;
 import com.wx.wxrpc.core.reflect.api.impl.JdkReflect;
 import com.wx.wxrpc.core.reflect.api.reflect;
@@ -35,5 +38,24 @@ public class ConsumerConfig  {
         return x ->{
             consumer.scanFileds();
         };
+    }
+
+
+    /**
+     * 配置一个默认的路由器
+     * @return
+     */
+    @Bean
+    public Router router(){
+        return Router.DEFAULT;
+    }
+
+    /**
+     * 配置一个默认的负载均衡器，固定选择第一个
+     * @return
+     */
+    @Bean
+    public LoadBalance loadBalance(){
+        return new RoundRobinLoadBalance();
     }
 }
