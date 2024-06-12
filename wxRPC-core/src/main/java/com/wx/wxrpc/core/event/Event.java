@@ -1,19 +1,21 @@
 package com.wx.wxrpc.core.event;
 
+import com.wx.wxrpc.core.meta.InstanceMeta;
+
 import java.util.List;
 
 public class Event {
-    List<String> nodes;
+    List<InstanceMeta> nodes;
 
-    public Event(List<String> nodes) {
+    public Event(List<InstanceMeta> nodes) {
         this.nodes = nodes;
     }
 
-    public List<String> getNodes() {
+    public List<InstanceMeta> getNodes() {
         return nodes;
     }
 
-    public void setNodes(List<String> nodes) {
+    public void setNodes(List<InstanceMeta> nodes) {
         this.nodes = nodes;
     }
 }

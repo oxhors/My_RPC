@@ -11,6 +11,7 @@ import com.wx.wxrpc.core.reflect.impl.JdkReflect;
 import com.wx.wxrpc.core.reflect.reflect;
 import com.wx.wxrpc.core.registry.RegisterCenter;
 import com.wx.wxrpc.core.registry.impl.SimpleRegisterCenter;
+import com.wx.wxrpc.core.registry.impl.ZkRegisterCenter;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
@@ -82,13 +83,14 @@ public class ConsumerConfig implements EnvironmentAware {
         return new JdkReflect();
     }
 
-    @Bean
+    @Bean(initMethod = "start" , destroyMethod = "stop")
     public RegisterCenter registerCenter(){
-        String serverUrls = environment.getProperty("wxrpc.providers");
+        //String serverUrls = environment.getProperty("wxrpc.providers");
 
-        List<String> urls = Lists.newArrayList(Splitter.on(",").trimResults().omitEmptyStrings().split(serverUrls));
-
-        return new SimpleRegisterCenter(urls);
+        //List<String> urls = Lists.newArrayList(Splitter.on(",").trimResults().omitEmptyStrings().split(serverUrls));
+        ZkRegisterCenter registerCenter = new ZkRegisterCenter();
+        //registerCenter.start();
+        return registerCenter;
     }
 
     @Override

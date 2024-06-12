@@ -1,0 +1,7 @@
+spring.application.name: wxRPC-demo-provider
+
+app:
+  id: wxrpc
+  namespace: public
+  env: dev
+

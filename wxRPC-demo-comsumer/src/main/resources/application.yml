@@ -8,3 +8,8 @@ wxrpc:
 
 server:
   port: 8080
+
+app:
+  id: wxrpc
+  namespace: public
+  env: dev

@@ -6,8 +6,10 @@ import com.wx.wxrpc.core.annoation.RpcReference;
 import com.wx.wxrpc.core.loadbalance.LoadBalance;
 import com.wx.wxrpc.core.loadbalance.Router;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
+import com.wx.wxrpc.core.meta.ServiceMeta;
 import com.wx.wxrpc.core.reflect.reflect;
 import com.wx.wxrpc.core.registry.RegisterCenter;
+import com.wx.wxrpc.core.utils.MethodUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -34,6 +36,11 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
 
     @Autowired
     private LoadBalance loadBalance;
+
+    private String app;
+    private String namespace;
+    private String env;
+
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         //获取容器
@@ -45,13 +52,15 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
     //属性设置之后执行该方法
     public void scanFileds() throws Exception {
         String[] beanDefinitionNames = applicationContext.getBeanDefinitionNames();
-
+        app = environment.getProperty("app.id");
+        namespace = environment.getProperty("app.namespace");
+        env = environment.getProperty("app.env");
         // 找出所有带有Reference注解的bean,设置代理对象
         setFiledsWithReferenceAnnotation(beanDefinitionNames);
     }
 
     //保存服务接口对应的代理对象，内部通过http请求发起远程调用
-    private Map<String,Object> proxyServers = new HashMap<>();
+    private Map<ServiceMeta,Object> proxyServers = new HashMap<>();
     private void setFiledsWithReferenceAnnotation(String[] beanDefinitionNames) throws IllegalAccessException, ClassNotFoundException {
         //TODO 读取配置的服务地址，准备扩展为注册中心实现
         //String serverUrls = environment.getProperty("wxrpc.providers");
@@ -61,6 +70,7 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
         //LoadBalance loadBalance = applicationContext.getBean(LoadBalance.class);
         //保存路由器，选择器
         RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
+        //registerCenter.start();
 
         RpcContext rpcContext = new RpcContext(loadBalance,router);
         //不空
@@ -70,7 +80,7 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
             Class<?> beanClass = o.getClass();
             //while (Object)
             //Field[] fields = beanClass.getDeclaredFields();
-            List<Field> withAnnotation = getTargetFileds(beanClass);
+            List<Field> withAnnotation = MethodUtils.getAnnoFields(beanClass,RpcReference.class);
             if(withAnnotation.isEmpty()){
                 continue;
             }
@@ -78,16 +88,23 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
             for (Field field : withAnnotation) {
                 //和getName没什么区别，只有内部类和数组会有区别
                 String serviceName = field.getType().getCanonicalName();
+                ServiceMeta serviceMeta = ServiceMeta.builder()
+                        .env(env)
+                        .namespace(namespace)
+                        .app(app)
+                        .serviceName(serviceName)
+                        .build();
                 if(proxyServers.containsKey(serviceName)){
                     //存在，直接给字段赋值
-                    Object proxyServer = proxyServers.get(serviceName);
+                    Object proxyServer = proxyServers.get(serviceMeta);
                     //强制反射，突破private限制
                     field.setAccessible(true);
                     field.set(o,proxyServer);
                 }else{
+
                     //创建代理对象并放入缓存
-                    Object proxyServer = reflectHandler.getProxyInstance(serviceName,rpcContext,registerCenter);
-                    proxyServers.put(serviceName,proxyServer);
+                    Object proxyServer = reflectHandler.getProxyInstance(serviceMeta,rpcContext,registerCenter);
+                    proxyServers.put(serviceMeta,proxyServer);
                     field.setAccessible(true);
                     field.set(o,proxyServer);
                 }
@@ -95,24 +112,6 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
         }
     }
 
-    /**
-     * 找出所有带有目标注解的字段
-     * @param
-     * @return
-     */
-    private List<Field> getTargetFileds(Class<?> clazz) {
-       List<Field> res = new ArrayList<>();
-       while(Objects.nonNull(clazz)){
-           List<Field> list = Arrays.stream(clazz.getDeclaredFields()).filter(field -> {
-               return field.isAnnotationPresent(RpcReference.class);
-           }).toList();
-           if(!list.isEmpty()){
-               res.addAll(list);
-           }
-           clazz = clazz.getSuperclass();
-       }
-        return res;
-    }
 
     /**
      * 获取环境变量

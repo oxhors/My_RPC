@@ -4,6 +4,8 @@ import com.google.common.base.Strings;
 import com.wx.wxrpc.core.annoation.RpcService;
 import com.wx.wxrpc.core.entity.RpcRequest;
 import com.wx.wxrpc.core.entity.RpcResponse;
+import com.wx.wxrpc.core.meta.InstanceMeta;
+import com.wx.wxrpc.core.meta.ServiceMeta;
 import com.wx.wxrpc.core.registry.RegisterCenter;
 import jakarta.annotation.PostConstruct;
 
@@ -34,13 +36,26 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
 
     private Environment environment;
 
-    private String serviceAddr;
+    private String app;
+    private String namespace;
+    private String env;
+
+    //服务一启动，对于所有的对外提供的方法，元信息都是一样的
+    private InstanceMeta instanceMeta;
     @PostConstruct
     public void initServiceMap(){
         try {
             String port = environment.getProperty("server.port");
+            app = environment.getProperty("app.id");
+            namespace = environment.getProperty("app.namespace");
+            env = environment.getProperty("app.env");
+
             String hostAddress = InetAddress.getLocalHost().getHostAddress();
-            serviceAddr = Strings.lenientFormat("%s_%s",hostAddress,port);
+            instanceMeta = InstanceMeta.builder()
+                    .schema("http")
+                    .host(hostAddress)
+                    .port(Integer.valueOf(port))
+                    .build();
 
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
@@ -70,7 +85,13 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
     private void unRegisterService(){
         RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
         serviceMap.keySet().forEach(service ->{
-            registerCenter.unregister(service,serviceAddr);
+            ServiceMeta serviceMeta = ServiceMeta.builder()
+                    .app(app)
+                    .namespace(namespace)
+                    .env(env)
+                    .serviceName(service)
+                    .build();
+            registerCenter.unregister(serviceMeta,instanceMeta);
         });
         registerCenter.stop();
     }
@@ -79,7 +100,13 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
     private void registerService() {
         RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
         serviceMap.keySet().forEach(service ->{
-            registerCenter.register(service,serviceAddr);
+            ServiceMeta serviceMeta = ServiceMeta.builder()
+                    .serviceName(service)
+                    .app(app)
+                    .namespace(namespace)
+                    .env(env)
+                    .build();
+            registerCenter.register(serviceMeta,instanceMeta);
         });
     }
 

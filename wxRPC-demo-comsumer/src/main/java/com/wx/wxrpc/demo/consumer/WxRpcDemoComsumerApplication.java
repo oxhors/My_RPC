@@ -30,6 +30,7 @@ public class WxRpcDemoComsumerApplication {
     public ApplicationRunner applicationRunner2(){
         return x ->{
             for(int i=0;i<6;i++){
+                Thread.sleep(2000);
                 User user1 = userService.findById(1000);
                 System.out.println(user1);
             }

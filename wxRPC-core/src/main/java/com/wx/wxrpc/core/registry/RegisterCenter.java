@@ -1,6 +1,8 @@
 package com.wx.wxrpc.core.registry;
 
 import com.wx.wxrpc.core.event.EventListener;
+import com.wx.wxrpc.core.meta.InstanceMeta;
+import com.wx.wxrpc.core.meta.ServiceMeta;
 
 import java.util.List;
 
@@ -11,11 +13,11 @@ public interface RegisterCenter {
     void start();
     void stop();
 
-    void register(String service,String instance);
+    void register(ServiceMeta service, InstanceMeta instanceMeta);
 
-    void unregister(String service,String instance);
+    void unregister(ServiceMeta service,InstanceMeta instanceMeta);
 
-    List<String> findAll(String service);
+    List<InstanceMeta> findAll(ServiceMeta service);
 
-    void subscribe(String service, EventListener eventListener);
+    void subscribe(ServiceMeta service, EventListener eventListener);
 }

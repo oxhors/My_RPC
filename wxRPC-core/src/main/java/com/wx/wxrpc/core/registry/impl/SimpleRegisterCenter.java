@@ -1,6 +1,8 @@
 package com.wx.wxrpc.core.registry.impl;
 
 import com.wx.wxrpc.core.event.EventListener;
+import com.wx.wxrpc.core.meta.InstanceMeta;
+import com.wx.wxrpc.core.meta.ServiceMeta;
 import com.wx.wxrpc.core.registry.RegisterCenter;
 
 import java.util.List;
@@ -17,18 +19,18 @@ public class SimpleRegisterCenter implements RegisterCenter {
     }
 
     @Override
-    public void register(String service, String instance) {
+    public void register(ServiceMeta service, InstanceMeta instanceMeta) {
 
     }
 
     @Override
-    public void unregister(String service, String instance) {
+    public void unregister(ServiceMeta service, InstanceMeta instanceMeta) {
 
     }
 
-    private List<String> providers;
+    private List<InstanceMeta> providers;
 
-    public SimpleRegisterCenter(List<String> providers) {
+    public SimpleRegisterCenter(List<InstanceMeta> providers) {
         this.providers = providers;
     }
 
@@ -38,12 +40,12 @@ public class SimpleRegisterCenter implements RegisterCenter {
      * @return
      */
     @Override
-    public List<String> findAll(String service) {
+    public List<InstanceMeta> findAll(ServiceMeta service) {
         return providers;
     }
 
     @Override
-    public void subscribe(String service, EventListener eventListener) {
+    public void subscribe(ServiceMeta service, EventListener eventListener) {
 
     }
 }
