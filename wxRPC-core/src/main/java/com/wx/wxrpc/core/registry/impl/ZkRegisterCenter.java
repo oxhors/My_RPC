@@ -14,6 +14,9 @@ import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
 import org.apache.curator.framework.recipes.cache.TreeCacheListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.CreateMode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.Environment;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,12 +28,22 @@ public class ZkRegisterCenter implements RegisterCenter {
 
     private TreeCache treeCache;
 
+    private Environment env;
+
+    @Value("${wxrpc.zkservers}")
+    private String zkServers;
+
+    @Value("${wxrpc.zkroot}")
+    private String root;
+
     public ZkRegisterCenter() {
+        //String zkservers = env.getProperty("wxrpc.zkservers");
+        //String root = env.getProperty("wxrpc.zkroot");
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000,3,1000);
         this.client = CuratorFrameworkFactory.builder()
-                .connectString("zookeeper:2181")
+                .connectString(zkServers)
                 .retryPolicy(retryPolicy)
-                .namespace("wxrpc")
+                .namespace(root)
                 .build();
         //this.client.start();
     }
@@ -127,4 +140,6 @@ public class ZkRegisterCenter implements RegisterCenter {
             throw new RuntimeException(e);
         }
     }
+
+
 }

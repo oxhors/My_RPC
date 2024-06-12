@@ -5,3 +5,6 @@ app:
   namespace: public
   env: dev
 
+wxrpc:
+  zkservers: zookeeper:2181
+  zkroot: wxrpc
