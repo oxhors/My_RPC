@@ -1,10 +1,12 @@
 package com.wx.wxrpc.core.reflect.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Strings;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.wx.wxrpc.core.entity.RpcRequest;
 import com.wx.wxrpc.core.entity.RpcResponse;
+import com.wx.wxrpc.core.exception.RpcException;
 import com.wx.wxrpc.core.filter.Filter;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
 import com.wx.wxrpc.core.meta.InstanceMeta;
@@ -94,10 +96,12 @@ public class JdkReflect implements reflect {
             if(MethodUtils.checkLocalMethod(method)){
                 return null;
             }
+
             request.setServiceName(serviceName);
             Type[] types = method.getGenericParameterTypes();
             Class<?>[] paras = new Class<?>[types.length];
             for(int i=0;i<types.length;i++){
+
                 paras[i] = Class.forName(types[i].getTypeName());
             }
             request.setParas(paras);
@@ -105,7 +109,7 @@ public class JdkReflect implements reflect {
             request.setMethodName(method.getName());
             //发送http请求，请求体为request
             List<Filter> filters = rpcContext.getFilters();
-            //过滤器前置处理逻辑
+           // 过滤器前置处理逻辑
 //            Object o = null;
 //            for (Filter filter : filters) {
 //                o = filter.preFilter(request);
@@ -116,19 +120,21 @@ public class JdkReflect implements reflect {
 //            }
             log.info("消费者发送http请求，请求消息为：{}",request.toString());
             RpcResponse response = getResponse(request,method);
-            if(response == null || !response.getStatus()){
-                return null;
+
+            if(!response.getStatus()){
+                throw response.getEx();
             }
-            //过滤器后置逻辑
-//            for (Filter filter : filters) {
+
+            Object result = response.getData();
+            //获取结果后要进行类型转换
+            result = TypeUtils.castFastJsonRetObject(result,method);
+            // 过滤器后置逻辑
+          //  for (Filter filter : filters) {
 //                //主要做了缓存的逻辑
 //                filter.postFilter(request, response, response.getData());
 //            }
-            if(response.getStatus()){
-                return response.getData();
-            }else {
-                return null;
-            }
+
+            return result;
         }
 
         /**
@@ -152,7 +158,8 @@ public class JdkReflect implements reflect {
                         .post(RequestBody.create(requsetJson, MediaType.get("application/json; charset=utf-8")))
                         .build()).execute();
                 // 获取结果，做一下类型处理
-                return TypeUtils.getRpcResponse(method, response);
+                //return TypeUtils.getRpcResponse(method, response);
+                return JSONObject.parseObject(response.body().string(),RpcResponse.class);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

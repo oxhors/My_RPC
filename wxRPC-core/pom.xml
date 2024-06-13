@@ -17,6 +17,7 @@
         <okhttp.version>4.12.0</okhttp.version>
         <gson.version>2.10.1</gson.version>
         <curator.version>5.1.0</curator.version>
+        <fastjson.version>1.2.83</fastjson.version>
     </properties>
 
     <dependencies>
@@ -42,6 +43,11 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>${gson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>${fastjson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
