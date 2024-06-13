@@ -15,6 +15,6 @@ public class RpcResponse <T> {
 
     T data;
 
-    RpcException ex;
+    String errorCode;
 
 }

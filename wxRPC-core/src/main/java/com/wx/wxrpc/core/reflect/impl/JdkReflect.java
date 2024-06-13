@@ -25,6 +25,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -96,20 +97,23 @@ public class JdkReflect implements reflect {
             if(MethodUtils.checkLocalMethod(method)){
                 return null;
             }
+            Object result = null;
+            int retryTimes = 2;
+            while(retryTimes-- > 0) {
+                try {
+                    request.setServiceName(serviceName);
+                    Type[] types = method.getGenericParameterTypes();
+                    Class<?>[] paras = new Class<?>[types.length];
+                    for (int i = 0; i < types.length; i++) {
 
-            request.setServiceName(serviceName);
-            Type[] types = method.getGenericParameterTypes();
-            Class<?>[] paras = new Class<?>[types.length];
-            for(int i=0;i<types.length;i++){
-
-                paras[i] = Class.forName(types[i].getTypeName());
-            }
-            request.setParas(paras);
-            request.setArgs(args);
-            request.setMethodName(method.getName());
-            //发送http请求，请求体为request
-            List<Filter> filters = rpcContext.getFilters();
-           // 过滤器前置处理逻辑
+                        paras[i] = Class.forName(types[i].getTypeName());
+                    }
+                    request.setParas(paras);
+                    request.setArgs(args);
+                    request.setMethodName(method.getName());
+                    //发送http请求，请求体为request
+                    List<Filter> filters = rpcContext.getFilters();
+                    // 过滤器前置处理逻辑
 //            Object o = null;
 //            for (Filter filter : filters) {
 //                o = filter.preFilter(request);
@@ -118,22 +122,28 @@ public class JdkReflect implements reflect {
 //                log.info("消费者使用了缓存结果....{}",o);
 //                return o;
 //            }
-            log.info("消费者发送http请求，请求消息为：{}",request.toString());
-            RpcResponse response = getResponse(request,method);
+                    log.info("消费者发送http请求，请求消息为：{}", request.toString());
+                    RpcResponse response = getResponse(request, method);
+                    if (!response.getStatus()) {
+                        throw new RpcException(response.getErrorCode());
+                    }
+                    //接受到的响应
+                    result = response.getData();
+                    //获取结果后要进行类型转换
+                    result = TypeUtils.castFastJsonRetObject(result, method);
 
-            if(!response.getStatus()){
-                throw response.getEx();
+                    // 过滤器后置逻辑
+                    //  for (Filter filter : filters) {
+//              //主要做了缓存的逻辑
+//              filter.postFilter(request, response, response.getData());
+                    return result;
+                } catch (Exception e) {
+                    if (!(e.getCause() instanceof SocketTimeoutException)) {
+                        throw e;
+                    }
+                    log.info("=======>请求超时");
+                }
             }
-
-            Object result = response.getData();
-            //获取结果后要进行类型转换
-            result = TypeUtils.castFastJsonRetObject(result,method);
-            // 过滤器后置逻辑
-          //  for (Filter filter : filters) {
-//                //主要做了缓存的逻辑
-//                filter.postFilter(request, response, response.getData());
-//            }
-
             return result;
         }
 

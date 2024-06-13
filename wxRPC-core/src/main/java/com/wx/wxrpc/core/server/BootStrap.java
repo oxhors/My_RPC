@@ -5,6 +5,7 @@ import com.wx.wxrpc.core.annoation.RpcService;
 import com.wx.wxrpc.core.entity.RpcRequest;
 import com.wx.wxrpc.core.entity.RpcResponse;
 import com.wx.wxrpc.core.exception.RpcException;
+import com.wx.wxrpc.core.exception.RpcExceptionEnum;
 import com.wx.wxrpc.core.meta.InstanceMeta;
 import com.wx.wxrpc.core.meta.ServiceMeta;
 import com.wx.wxrpc.core.registry.RegisterCenter;
@@ -147,7 +148,7 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
         //拿到实现对象
         if(service == null){
             RpcException ex = new RpcException("no such service");
-            return new RpcResponse<>(false,"no such service",ex);
+            return new RpcResponse<>(false,"no such service",RpcExceptionEnum.X001.getErrorCode());
         }
         String methodName = request.getMethodName();
         Class<?>[] paras = request.getParas();
@@ -168,17 +169,15 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
             Object ret = method.invoke(service, args/*如果不实现重载，在这里肯定会出现反射调用失败，因为参数不一致*/);
             log.info("提供者接受远程调用的方法名为：{}，参数类型为：{}，调用结果为：{}",methodName,Arrays.toString(paras),ret.toString());
             response.setData(ret);
-            response.setEx(null);
+            response.setErrorCode("");
             response.setStatus(true);
         } catch (ClassNotFoundException e) {
-           // response.setData(null);
-            response.setEx(new RpcException(e.getException(),RpcException.SERVICE_NOT_FOUND));
-        }  catch (NoSuchMethodException e) {
-            response.setEx(new RpcException(e,RpcException.METHOD_NOT_FOUND));
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            response.setEx(new RpcException(e,RpcException.METHOD_INVOKE_FAILED));
+            // response.setData(null);
+            response.setErrorCode(RpcExceptionEnum.X001.getErrorCode());
+        }  catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            response.setErrorCode(RpcExceptionEnum.X001.getErrorCode());
         }
-        response.setEx(new RpcException(RpcException.UNKNOWN));
+        response.setErrorCode(RpcExceptionEnum.X003.getErrorCode());
         return response;
     }
 
