@@ -5,6 +5,7 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.wx.wxrpc.core.entity.RpcRequest;
 import com.wx.wxrpc.core.entity.RpcResponse;
+import com.wx.wxrpc.core.filter.Filter;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
 import com.wx.wxrpc.core.meta.InstanceMeta;
 import com.wx.wxrpc.core.meta.ServiceMeta;
@@ -23,6 +24,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -102,9 +104,27 @@ public class JdkReflect implements reflect {
             request.setArgs(args);
             request.setMethodName(method.getName());
             //发送http请求，请求体为request
+            List<Filter> filters = rpcContext.getFilters();
+            //过滤器前置处理逻辑
+            Object o = null;
+            for (Filter filter : filters) {
+                o = filter.preFilter(request);
+            }
+            if(Objects.nonNull(o)){
+                log.info("消费者使用了缓存结果....{}",o);
+                return o;
+            }
             log.info("消费者发送http请求，请求消息为：{}",request.toString());
             RpcResponse response = getResponse(request,method);
-            if(response != null && response.getStatus()){
+            if(response == null || !response.getStatus()){
+                return null;
+            }
+            //过滤器后置逻辑
+            for (Filter filter : filters) {
+                //主要做了缓存的逻辑
+                filter.postFilter(request, response, response.getData());
+            }
+            if(response.getStatus()){
                 return response.getData();
             }else {
                 return null;

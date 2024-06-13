@@ -1,5 +1,7 @@
 package com.wx.wxrpc.core.loadbalance;
 
+import com.wx.wxrpc.core.filter.Filter;
+
 import java.util.List;
 
 public class RpcContext {
@@ -7,9 +9,10 @@ public class RpcContext {
     private LoadBalance loadBalance;
     private Router router;
 
-    public RpcContext(LoadBalance loadBalance, Router router) {
+    public RpcContext(LoadBalance loadBalance, Router router,List<Filter> filters) {
         this.loadBalance = loadBalance;
         this.router = router;
+        this.filters = filters;
     }
 
     public List<Filter> getFilters() {

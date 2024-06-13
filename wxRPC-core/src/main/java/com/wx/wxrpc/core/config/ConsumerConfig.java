@@ -3,6 +3,8 @@ package com.wx.wxrpc.core.config;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.wx.wxrpc.core.consumer.Consumer;
+import com.wx.wxrpc.core.filter.Filter;
+import com.wx.wxrpc.core.filter.impl.CacheFilter;
 import com.wx.wxrpc.core.loadbalance.LoadBalance;
 import com.wx.wxrpc.core.loadbalance.Router;
 import com.wx.wxrpc.core.loadbalance.impl.RoundRobinLoadBalance;
@@ -83,6 +85,7 @@ public class ConsumerConfig implements EnvironmentAware {
         return new JdkReflect();
     }
 
+    //注册中心
     @Bean(initMethod = "start" , destroyMethod = "stop")
     public RegisterCenter registerCenter(){
         //String serverUrls = environment.getProperty("wxrpc.providers");
@@ -92,6 +95,13 @@ public class ConsumerConfig implements EnvironmentAware {
         //registerCenter.start();
         return registerCenter;
     }
+
+    //过滤器配置
+    @Bean
+    public Filter filter(){
+        return new CacheFilter();
+    }
+
 
     @Override
     public void setEnvironment(Environment environment) {

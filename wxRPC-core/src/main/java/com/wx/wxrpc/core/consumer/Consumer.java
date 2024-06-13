@@ -3,6 +3,7 @@ package com.wx.wxrpc.core.consumer;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.wx.wxrpc.core.annoation.RpcReference;
+import com.wx.wxrpc.core.filter.Filter;
 import com.wx.wxrpc.core.loadbalance.LoadBalance;
 import com.wx.wxrpc.core.loadbalance.Router;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
@@ -76,8 +77,9 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
         //保存路由器，选择器
         RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
         //registerCenter.start();
-
-        RpcContext rpcContext = new RpcContext(loadBalance,router);
+        //TODO 自动装配？
+        List<Filter> filters = Lists.newArrayList(applicationContext.getBeansOfType(Filter.class).values());
+        RpcContext rpcContext = new RpcContext(loadBalance,router,filters);
         //不空
         for (String def : beanDefinitionNames) {
             //while()
