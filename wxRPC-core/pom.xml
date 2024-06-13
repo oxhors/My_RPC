@@ -6,15 +6,14 @@
         <groupId>com.wx</groupId>
         <artifactId>wxRPC</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.wx</groupId>
+
     <artifactId>wxRPC-core</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>wxRPC-core</name>
     <description>wxRPC-core</description>
+    
     <properties>
-        <java.version>17</java.version>
         <okhttp.version>4.12.0</okhttp.version>
         <gson.version>2.10.1</gson.version>
         <curator.version>5.1.0</curator.version>
@@ -24,11 +23,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <version>${springboot.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <version>${springboot.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -60,14 +61,5 @@
             <version>${curator.version}</version>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-
+    
 </project>

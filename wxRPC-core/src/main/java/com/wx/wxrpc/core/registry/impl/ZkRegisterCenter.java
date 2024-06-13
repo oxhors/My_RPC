@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class ZkRegisterCenter implements RegisterCenter {
+public class ZkRegisterCenter implements RegisterCenter , EnvironmentAware {
 
     private final CuratorFramework client;
 
@@ -30,20 +30,20 @@ public class ZkRegisterCenter implements RegisterCenter {
 
     private Environment env;
 
-    @Value("${wxrpc.zkservers}")
-    private String zkServers;
-
-    @Value("${wxrpc.zkroot}")
-    private String root;
+//    @Value("${wxrpc.zkservers}")
+//    private String zkServers;
+//
+//    @Value("${wxrpc.zkroot}")
+//    private String root;
 
     public ZkRegisterCenter() {
-        //String zkservers = env.getProperty("wxrpc.zkservers");
-        //String root = env.getProperty("wxrpc.zkroot");
+//        String zkservers = env.getProperty("wxrpc.zkservers");
+//        String root = env.getProperty("wxrpc.zkroot");
         final RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000,3,1000);
         this.client = CuratorFrameworkFactory.builder()
-                .connectString(zkServers)
+                .connectString("zookeeper:2181")
                 .retryPolicy(retryPolicy)
-                .namespace(root)
+                .namespace("wxrpc")
                 .build();
         //this.client.start();
     }
@@ -142,4 +142,8 @@ public class ZkRegisterCenter implements RegisterCenter {
     }
 
 
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.env = environment;
+    }
 }

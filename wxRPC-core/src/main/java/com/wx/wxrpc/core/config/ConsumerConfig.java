@@ -1,9 +1,12 @@
 package com.wx.wxrpc.core.config;
 
+import com.fasterxml.jackson.databind.ser.Serializers;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.wx.wxrpc.core.consumer.Consumer;
 import com.wx.wxrpc.core.filter.Filter;
+import com.wx.wxrpc.core.filter.filterchain.FilterChainService;
+import com.wx.wxrpc.core.filter.impl.BaseFilter;
 import com.wx.wxrpc.core.filter.impl.CacheFilter;
 import com.wx.wxrpc.core.loadbalance.LoadBalance;
 import com.wx.wxrpc.core.loadbalance.Router;
@@ -21,6 +24,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 
+import java.nio.file.DirectoryStream;
 import java.util.List;
 
 @Configuration
@@ -100,6 +104,12 @@ public class ConsumerConfig implements EnvironmentAware {
     @Bean
     public Filter filter(){
         return new CacheFilter();
+    }
+
+    //责任链
+    @Bean
+    public FilterChainService filterChainService(List<BaseFilter> filters){
+        return new FilterChainService(filters);
     }
 
 
