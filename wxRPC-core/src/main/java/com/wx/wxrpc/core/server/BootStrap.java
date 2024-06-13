@@ -10,6 +10,8 @@ import com.wx.wxrpc.core.registry.RegisterCenter;
 import jakarta.annotation.PostConstruct;
 
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor;
@@ -30,6 +32,8 @@ import java.util.stream.Stream;
 //加载时把所有标注RpcService的类添加到map中
 @Component
 public class BootStrap implements ApplicationContextAware, EnvironmentAware {
+
+    private final Logger log = LoggerFactory.getLogger(BootStrap.class);
     public static Map<String,Object> serviceMap = new HashMap<>();
     //拿到容器
     private ApplicationContext applicationContext;
@@ -63,11 +67,13 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
         Map<String, Object> services = applicationContext.getBeansWithAnnotation(RpcService.class);
 
         for (Map.Entry<String, Object> entry : services.entrySet()) {
-
-            Class<?>[] interfaces = entry.getValue().getClass().getInterfaces();
+            Object serviceImpl = entry.getValue();
+            Class<?>[] interfaces = serviceImpl.getClass().getInterfaces();
 
             for (Class<?> anInterface : interfaces) {
+
                 //对于实现类的每一个接口，都要对应这个实现类对象，多对一的关系
+                log.info("服务提供者开始注册服务,服务名为：{}，实例对象为：{}",anInterface.getCanonicalName(),serviceImpl);
                 serviceMap.put(anInterface.getName(),entry.getValue());
             }
         }
@@ -75,6 +81,7 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
     }
 
     public void start(){
+        log.info("服务提供者开始将服务列表注册到zk.....");
         RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
         registerCenter.start();
         registerService();
@@ -83,6 +90,7 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
     //注销所有服务何其对应的地址
     @PreDestroy
     private void unRegisterService(){
+        log.info("服务提供者开始将服务从zk注销.....");
         RegisterCenter registerCenter = applicationContext.getBean(RegisterCenter.class);
         serviceMap.keySet().forEach(service ->{
             ServiceMeta serviceMeta = ServiceMeta.builder()
@@ -133,9 +141,9 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
         if(service == null){
             return new RpcResponse<>(false,"no such service");
         }
-
         String methodName = request.getMethodName();
         Class<?>[] paras = request.getParas();
+        log.info("提供者接受远程调用的方法名为：{}，参数类型为：{}",methodName,Arrays.toString(paras));
         /*List<Class<?>> paramTypes = Arrays.stream(paras).map((str) -> {
             try {
                 return Class.forName(str);
@@ -150,6 +158,7 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
             Method method = serviceClass.getMethod(methodName,paras/*支持方法重载*/);
             // 有对应的服务实例，以及方法,反射调用
             Object ret = method.invoke(service, args/*如果不实现重载，在这里肯定会出现反射调用失败，因为参数不一致*/);
+            log.info("提供者接受远程调用的方法名为：{}，参数类型为：{}，调用结果为：{}",methodName,Arrays.toString(paras),ret.toString());
             return new RpcResponse<>(true,ret);
         } catch (Exception e) {
             e.printStackTrace();

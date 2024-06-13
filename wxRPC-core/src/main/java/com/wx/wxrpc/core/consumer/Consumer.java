@@ -10,6 +10,8 @@ import com.wx.wxrpc.core.meta.ServiceMeta;
 import com.wx.wxrpc.core.reflect.reflect;
 import com.wx.wxrpc.core.registry.RegisterCenter;
 import com.wx.wxrpc.core.utils.MethodUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -24,6 +26,8 @@ import java.util.*;
 // 1 扫描所有标注reference的字段，注入动态代理对象，代理对象发送http请求完成远程调用
 @Component
 public class Consumer implements ApplicationContextAware, EnvironmentAware {
+
+    private final Logger log = LoggerFactory.getLogger(Consumer.class);
 
     private ApplicationContext applicationContext;
     private Environment environment;
@@ -56,6 +60,7 @@ public class Consumer implements ApplicationContextAware, EnvironmentAware {
         namespace = environment.getProperty("app.namespace");
         env = environment.getProperty("app.env");
         // 找出所有带有Reference注解的bean,设置代理对象
+        log.info("服务消费者开始给所有带有注解的字段设置代理对象.....");
         setFiledsWithReferenceAnnotation(beanDefinitionNames);
     }
 

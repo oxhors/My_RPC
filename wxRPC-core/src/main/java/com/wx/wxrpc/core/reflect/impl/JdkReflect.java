@@ -14,6 +14,8 @@ import com.wx.wxrpc.core.utils.MethodUtils;
 import com.wx.wxrpc.core.utils.TypeUtils;
 import lombok.SneakyThrows;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
@@ -27,6 +29,8 @@ import java.util.stream.Stream;
 
 //@ConditionalOnProperty(prefix = "wxrpc.reflect.type" , value = "jdk")
 public class JdkReflect implements reflect {
+
+    private final Logger log = LoggerFactory.getLogger(JdkReflect.class);
     @Override
     public Object getProxyInstance(ServiceMeta serviceMeta, RpcContext rpcContext, RegisterCenter registerCenter) {
         Object res = null;
@@ -98,6 +102,7 @@ public class JdkReflect implements reflect {
             request.setArgs(args);
             request.setMethodName(method.getName());
             //发送http请求，请求体为request
+            log.info("消费者发送http请求，请求消息为：{}",request.toString());
             RpcResponse response = getResponse(request,method);
             if(response != null && response.getStatus()){
                 return response.getData();
@@ -118,7 +123,9 @@ public class JdkReflect implements reflect {
             String requsetJson = gson.toJson(request);
             //转换原信息为url
             List<String> urls = nodes.stream().map(node -> Strings.lenientFormat("http://%s:%s", node.getHost(), String.valueOf(node.getPort()))).toList();
+            log.info("消费者获取到的提供者的服务列表为：{}",urls);
             String url = rpcContext.getLoadBalance().choose(rpcContext.getRouter().rout(urls));
+            log.info("消费者选择的提供者的地址为：{}",url);
             try {
                 Response response = okHttpClient.newCall(new Request.Builder()
                         .url(url)
