@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import com.wx.wxrpc.core.entity.RpcRequest;
 import com.wx.wxrpc.core.entity.RpcResponse;
 import com.wx.wxrpc.core.exception.RpcException;
+import com.wx.wxrpc.core.exception.RpcExceptionEnum;
 import com.wx.wxrpc.core.filter.Filter;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
 import com.wx.wxrpc.core.meta.InstanceMeta;
@@ -138,10 +139,10 @@ public class JdkReflect implements reflect {
 //              filter.postFilter(request, response, response.getData());
                     return result;
                 } catch (Exception e) {
-                    if (!(e.getCause() instanceof SocketTimeoutException)) {
+                    if ( !(e instanceof SocketTimeoutException)) {
                         throw e;
                     }
-                    log.info("=======>请求超时");
+                    else log.info("=======>请求超时");
                 }
             }
             return result;
@@ -152,7 +153,7 @@ public class JdkReflect implements reflect {
          * @param request 请求对象
          * @return
          */
-        private RpcResponse getResponse(RpcRequest request,Method method) {
+        private RpcResponse getResponse(RpcRequest request,Method method) throws SocketTimeoutException {
             Gson gson = new GsonBuilder().
                     registerTypeAdapter(Class.class, new ClassCodec())
                     .create();
@@ -169,7 +170,11 @@ public class JdkReflect implements reflect {
                         .build()).execute();
                 // 获取结果，做一下类型处理
                 //return TypeUtils.getRpcResponse(method, response);
-                return JSONObject.parseObject(response.body().string(),RpcResponse.class);
+                RpcResponse rpcResponse = JSONObject.parseObject(response.body().string(), RpcResponse.class);
+                if (rpcResponse.getErrorCode().equals(RpcExceptionEnum.X002.getErrorCode())) {
+                    throw new SocketTimeoutException("服务调用超时");
+                }
+                else return rpcResponse;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

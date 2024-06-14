@@ -53,7 +53,7 @@ public class InstanceMeta {
     }
     public static InstanceMeta fromUrl(String url){
         URI uri = URI.create(url);
-        return new InstanceMeta(uri.toString(), uri.getHost(),  uri.getPort(), uri.getPath().substring(1));
+        return new InstanceMeta(uri.getScheme(), uri.getHost(),  uri.getPort(), uri.getPath().substring(1));
     }
 
     @Override

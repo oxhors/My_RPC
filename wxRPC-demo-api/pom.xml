@@ -12,7 +12,9 @@
     <name>wxRPC-demo-api</name>
     <description>wxRPC-demo-api</description>
 
-
+    <properties>
+        <java.version>17</java.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

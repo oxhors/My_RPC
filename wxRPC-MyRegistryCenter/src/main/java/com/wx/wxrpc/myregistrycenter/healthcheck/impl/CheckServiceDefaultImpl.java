@@ -4,8 +4,7 @@ import com.wx.wxrpc.myregistrycenter.entity.InstanceMeta;
 import com.wx.wxrpc.myregistrycenter.healthcheck.CheckHealth;
 import com.wx.wxrpc.myregistrycenter.service.RegistryService;
 import com.wx.wxrpc.myregistrycenter.service.impl.RegisterServiceImpl;
-import jakarta.annotation.PostConstruct;
-import org.springframework.web.bind.annotation.PostMapping;
+
 
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -31,17 +30,21 @@ public class CheckServiceDefaultImpl implements CheckHealth {
     public void start() {
         // 开启一个定时任务，定时去移除超时的服务
         scheduledExecutorService.scheduleAtFixedRate(() ->{
-            Map<String, Long> timestamp = RegisterServiceImpl.TIMESTAMP;
-            for (Map.Entry<String, Long> entry : timestamp.entrySet()) {
-                // 某个服务实例超时,把该实例下线
-                if(entry.getValue() - System.currentTimeMillis() > TIMEOUT){
-                    String[] split = entry.getKey().split("_");
-                    String service = split[0];
-                    InstanceMeta instanceMeta = InstanceMeta.fromUrl(split[1]);
-                    registryService.unregister(service,instanceMeta);
-                    // 从时间表中移除
-                    timestamp.remove(entry.getKey());
+            try {
+                Map<String, Long> timestamp = RegisterServiceImpl.TIMESTAMP;
+                for (Map.Entry<String, Long> entry : timestamp.entrySet()) {
+                    // 某个服务实例超时,把该实例下线
+                    if(System.currentTimeMillis()  - entry.getValue()  > TIMEOUT){
+                        String[] split = entry.getKey().split("_");
+                        String service = split[0];
+                        InstanceMeta instanceMeta = InstanceMeta.fromUrl(split[1]);
+                        registryService.unregister(service,instanceMeta);
+                        // 从时间表中移除
+                        timestamp.remove(entry.getKey());
+                    }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         },10,20, TimeUnit.SECONDS);
     }

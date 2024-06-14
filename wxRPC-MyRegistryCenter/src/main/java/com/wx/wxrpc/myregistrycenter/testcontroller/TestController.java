@@ -1,5 +1,7 @@
 package com.wx.wxrpc.myregistrycenter.testcontroller;
 
+import com.wx.wxrpc.myregistrycenter.cluster.Cluster;
+import com.wx.wxrpc.myregistrycenter.cluster.Server;
 import com.wx.wxrpc.myregistrycenter.entity.InstanceMeta;
 import com.wx.wxrpc.myregistrycenter.service.RegistryService;
 import jakarta.annotation.Resource;
@@ -16,6 +18,9 @@ public class TestController {
 
     @Resource
     private RegistryService registryService;
+
+    @Resource
+    private Cluster cluster;
     @PostMapping("/register")
     public InstanceMeta register(@RequestParam(value = "service") String service , @RequestBody InstanceMeta instanceMeta){
         return registryService.register(service,instanceMeta);
@@ -27,5 +32,10 @@ public class TestController {
     @GetMapping("/getall")
     public List<InstanceMeta> getAllInstance(@RequestParam String service){
         return registryService.findAllInstance(service);
+    }
+    @RequestMapping(value = "/info", method = RequestMethod.GET)
+    public Server info() {
+       // log.debug("==> info: {}", cluster.self());
+        return cluster.self();
     }
 }

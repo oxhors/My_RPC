@@ -3,3 +3,12 @@ spring:
     name: wxRPC-MyRegistryCenter
 server:
   port: 8888
+
+
+#????
+
+registry:
+  cluster:
+    - http://localhost:8888
+    - http://localhost:9999
+    - http://localhost:7777

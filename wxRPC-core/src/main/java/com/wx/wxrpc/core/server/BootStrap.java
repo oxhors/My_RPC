@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -130,7 +131,7 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
     }
 
     //提供反射的方法
-    public RpcResponse<?> invoke(RpcRequest request){
+    public RpcResponse<?> invoke(RpcRequest request) {
         /*Class<?> interfaces = null;
         try {
             interfaces = Class.forName(request.getServiceName());
@@ -171,13 +172,15 @@ public class BootStrap implements ApplicationContextAware, EnvironmentAware {
             response.setData(ret);
             response.setErrorCode("");
             response.setStatus(true);
-        } catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
             // response.setData(null);
+            //找不到方法
             response.setErrorCode(RpcExceptionEnum.X001.getErrorCode());
-        }  catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            response.setErrorCode(RpcExceptionEnum.X001.getErrorCode());
+        }  catch (IllegalAccessException | InvocationTargetException e) {
+            //方法调用抛出异常，会抛出SocketTimeOut异常
+            response.setErrorCode(RpcExceptionEnum.X002.getErrorCode());
         }
-        response.setErrorCode(RpcExceptionEnum.X003.getErrorCode());
+        //response.setErrorCode(RpcExceptionEnum.X003.getErrorCode());
         return response;
     }
 
