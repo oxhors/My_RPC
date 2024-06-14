@@ -3,6 +3,7 @@ package com.wx.wxrpc.myregistrycenter.cluster;
 import com.google.common.base.Strings;
 import com.wx.wxrpc.myregistrycenter.config.RegisterCenterConfigProperties;
 import com.wx.wxrpc.myregistrycenter.http.HttpInvoker;
+import com.wx.wxrpc.myregistrycenter.service.impl.RegisterServiceImpl;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,8 +56,30 @@ public class Cluster {
             checkServersAlive();
             //选主
             selectLeader();
+            //从leader同步数据快照
+            syncSnapshotFromLeader();
         },0,1, TimeUnit.SECONDS);
 
+    }
+
+    //从节点从主节点获取数据快照
+    private void syncSnapshotFromLeader() {
+
+        Server self = self();
+        Server leader = leader();
+        if(self != null && leader != null && !self.getLeader() &&!self.equals(leader) && self.getVersion() <= leader.getVersion()){
+            //当前节点不空，主节点不空，当前节点不是主节点，版本号小于主节点的版本号
+            RegisterCenterSnapshot snapshot = HttpInvoker.getHttp(Strings.lenientFormat("%s/register/snapshot", leader.getUrl()), RegisterCenterSnapshot.class);
+            if(snapshot != null){
+                log.debug("开始数据同步,从节点为：{},主节点为：{}", self.getUrl(),leader.getUrl());
+                RegisterServiceImpl.recoverDataFromSnapshot(snapshot);
+            }
+        } else if (self.getVersion() > leader.getVersion()) {
+            // 当前节点应该为主节点
+            self.setLeader(true);
+            self.setVersion(self.getVersion() + 1);
+            leader.setLeader(false);
+        }
     }
 
     private void selectLeader() {
@@ -66,13 +89,11 @@ public class Cluster {
             List<Server> aliveServers = serverList.stream().filter(Server::getStatus).toList();
             if(aliveServers.isEmpty()) return;
             Server leader = selectLeaderFromAliveServers(aliveServers);
-            leader.setVersion(leader.getVersion() + 1);
             log.debug("没有主节点，选取版本号最大的节点的作为主节点,{}",leader.getUrl());
         } else if (servers.size() > 1) {
             //选取版本号最大的作为主节点
             //其他节点设置位false
             Server leader = selectLeaderFromAliveServers(servers);
-            leader.setVersion(leader.getVersion() + 1);
             log.debug("超过一个主节点,选取版本号最大的节点的作为主节点,{}",leader.getUrl());
         } else{
             //只有一个主节点，不用选主
@@ -96,14 +117,21 @@ public class Cluster {
                 server.setLeader(false);
             }
         }
+        leader.setVersion(leader.getVersion() + 1);
         return leader;
     }
 
+    /**
+     * 优化点：对列表的遍历如果先后顺序不影响，可以使用并行流
+     */
     private void checkServersAlive() {
-        for (Server server : serverList) {
-            // if(server.equals(MYSELF)) continue;
+        serverList.parallelStream().forEach(server -> {
+            if(server.equals(MYSELF)) {
+                server.setStatus(true);
+                return;
+            }
             try {
-                Server info = HttpInvoker.getHttp(Strings.lenientFormat("%s/registertest/info",server.getUrl()), Server.class);
+                Server info = HttpInvoker.getHttp(Strings.lenientFormat("%s/register/info",server.getUrl()), Server.class);
                 if(info != null){
                     server.setStatus(true);
                     server.setLeader(info.getLeader());
@@ -118,10 +146,15 @@ public class Cluster {
                 server.setLeader(false);
                 server.setVersion(0);
             }
-        }
+        });
     }
 
     public Server self() {
         return MYSELF;
+    }
+    
+    //取出当前集群的主节点
+    public Server leader(){
+        return serverList.stream().filter(Server::getLeader).findAny().orElse(null);
     }
 }

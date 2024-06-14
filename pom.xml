@@ -16,6 +16,10 @@
         <springboot.version>3.3.0</springboot.version>
         <maevn.compiler.source>${java.version}</maevn.compiler.source>
         <maevn.compiler.target>${java.version}</maevn.compiler.target>
+
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+
     </properties>
     <modules>
         <module>wxRPC-core</module>

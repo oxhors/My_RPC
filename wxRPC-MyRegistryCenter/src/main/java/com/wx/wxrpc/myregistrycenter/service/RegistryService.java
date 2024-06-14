@@ -1,5 +1,6 @@
 package com.wx.wxrpc.myregistrycenter.service;
 
+import com.wx.wxrpc.myregistrycenter.cluster.RegisterCenterSnapshot;
 import com.wx.wxrpc.myregistrycenter.entity.InstanceMeta;
 
 import java.util.List;
@@ -21,4 +22,6 @@ public interface RegistryService {
 
     //刷新某个实例的所有服务的时间戳
     Long renew(InstanceMeta instanceMeta,String... services);
+
+     //RegisterCenterSnapshot createSnapshot();
 }

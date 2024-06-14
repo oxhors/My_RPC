@@ -25,10 +25,10 @@ public class InstanceMeta {
     private Boolean status;
 
 
-
     private Map<String,String> parameters = new HashMap<>();
 
     public InstanceMeta() {
+
     }
 
     public InstanceMeta(String schema, String host, Integer port, String context) {

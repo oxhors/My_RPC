@@ -20,8 +20,8 @@ import org.springframework.context.annotation.Profile;
 public class RegisterCenterConfig {
 
     @Bean
-    public RegistryService registryService(){
-        return new RegisterServiceImpl();
+    public RegistryService registryService(Cluster cluster){
+        return new RegisterServiceImpl(cluster);
     }
 
     @Bean(initMethod = "start",destroyMethod = "stop")
