@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: wxRPC-MyRegistryCenter
+server:
+  port: 8888
