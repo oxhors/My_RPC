@@ -1,6 +1,7 @@
 package com.wx.wxrpc.core.loadbalance.impl;
 
 import com.wx.wxrpc.core.loadbalance.LoadBalance;
+import com.wx.wxrpc.core.meta.InstanceMeta;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,7 +11,7 @@ public class RoundRobinLoadBalance implements LoadBalance {
 
     //轮询服务列表
     @Override
-    public String choose(List<String> urls) {
+    public InstanceMeta choose(List<InstanceMeta> urls) {
         if(urls == null || urls.isEmpty()){
             return null;
         }

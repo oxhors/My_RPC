@@ -103,4 +103,13 @@ public class InstanceMeta {
     public void setParameters(Map<String, String> parameters) {
         this.parameters = parameters;
     }
+
+    @Override
+    public String toString() {
+        return "InstanceMeta{" +
+                "schema='" + schema + '\'' +
+                ", host='" + host + '\'' +
+                ", port=" + port +
+                '}';
+    }
 }

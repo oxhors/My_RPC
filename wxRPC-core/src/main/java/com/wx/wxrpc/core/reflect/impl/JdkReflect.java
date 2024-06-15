@@ -9,6 +9,7 @@ import com.wx.wxrpc.core.entity.RpcResponse;
 import com.wx.wxrpc.core.exception.RpcException;
 import com.wx.wxrpc.core.exception.RpcExceptionEnum;
 import com.wx.wxrpc.core.filter.Filter;
+import com.wx.wxrpc.core.govern.SlidingTimeWindow;
 import com.wx.wxrpc.core.loadbalance.RpcContext;
 import com.wx.wxrpc.core.meta.InstanceMeta;
 import com.wx.wxrpc.core.meta.ServiceMeta;
@@ -17,6 +18,7 @@ import com.wx.wxrpc.core.registry.RegisterCenter;
 import com.wx.wxrpc.core.utils.MethodUtils;
 import com.wx.wxrpc.core.utils.TypeUtils;
 import lombok.SneakyThrows;
+import lombok.Synchronized;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +29,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.net.SocketTimeoutException;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -81,14 +86,31 @@ public class JdkReflect implements reflect {
 
         //服务列表
         private List<InstanceMeta> nodes;
+        //隔离的节点
+        private List<InstanceMeta> isolatedNodes = new ArrayList<>();
+        //探活列表
+        private List<InstanceMeta> halfOpenNodes = new ArrayList<>();
+        //每个服务实例对应的滑动窗口 实例地址 + 服务名
+        private Map<String, SlidingTimeWindow> slidingTimeWindowMap = new HashMap<>();
+
+        private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
 
         //上下文保存了路由器和选择器
         private RpcContext rpcContext;
+
+        private final Lock recordFaultLock = new ReentrantLock();
 
         public JdkInvocationHandler(String serviceName, List<InstanceMeta> nodes, RpcContext rpcContext) {
             this.serviceName = serviceName;
             this.nodes = nodes;
             this.rpcContext = rpcContext;
+            //定期从隔离列表加入探活列表
+            scheduledExecutorService.scheduleAtFixedRate(()->{
+                synchronized (nodes){
+                    halfOpenNodes.addAll(isolatedNodes);
+                    isolatedNodes.clear();
+                }
+            },10,10,TimeUnit.SECONDS);
         }
 
         //真正发送http请求的地方
@@ -122,13 +144,49 @@ public class JdkReflect implements reflect {
 //            if(Objects.nonNull(o)){
 //                log.info("消费者使用了缓存结果....{}",o);
 //                return o;
-//            }
-                    log.info("消费者发送http请求，请求消息为：{}", request.toString());
-                    RpcResponse response = getResponse(request, method);
-                    if (!response.getStatus()) {
-                        throw new RpcException(response.getErrorCode());
+                    InstanceMeta node = null;
+                    synchronized (nodes){
+                        if(halfOpenNodes.isEmpty()){
+                            node = rpcContext.getLoadBalance().choose(rpcContext.getRouter().rout(nodes));
+                        }else {
+                            //从探活列表中取出节点
+                            node = halfOpenNodes.get(0);
+                        }
                     }
-                    //接受到的响应
+                    String url = Strings.lenientFormat("http://%s:%s", node.getHost(), String.valueOf(node.getPort()));
+                    log.info("消费者选择的提供者的地址为：{}",url);
+                    RpcResponse response = null;
+                    try {
+                        log.info("消费者发送http请求，请求消息为：{}", request.toString());
+                        response = getResponse(request, method,url);
+                        if (!response.getStatus()) {
+                            throw new RpcException(response.getErrorCode());
+                        }
+                    } catch (Exception e) {
+                        //发生故障了，异常继续抛出，做故障计数
+                       slidingTimeWindowMap.putIfAbsent(url,new SlidingTimeWindow());
+                        SlidingTimeWindow window = slidingTimeWindowMap.get(url);
+                        int sum = window.getSum();
+                        recordFaultLock.lock();
+                        try {
+                            window.record(System.currentTimeMillis());
+                        }finally {
+                            recordFaultLock.unlock();
+                        }
+                        log.info("服务{}出现了{}次故障",url,sum);
+                        if(sum >= 10){
+                            //隔离故障节点
+                            isoloate(node);
+                        }
+                        throw e;
+                    }
+                    //探活成功
+                    synchronized (nodes){
+                        halfOpenNodes.remove(node);
+                        isolatedNodes.remove(node);
+                        nodes.add(node);
+                    }
+                   //接受到的响应
                     result = response.getData();
                     //获取结果后要进行类型转换
                     result = TypeUtils.castFastJsonRetObject(result, method);
@@ -148,21 +206,31 @@ public class JdkReflect implements reflect {
             return result;
         }
 
+        //隔离故障节点
+        private void isoloate(InstanceMeta node) {
+            synchronized (nodes){
+                if(nodes.contains(node)){
+                    nodes.remove(node);
+                }
+                if(halfOpenNodes.contains(node)){
+                    halfOpenNodes.remove(node);
+                }
+                isolatedNodes.add(node);
+            }
+        }
+
         /**
          * 发送http请求的实际方法，拿到http响应
          * @param request 请求对象
          * @return
          */
-        private RpcResponse getResponse(RpcRequest request,Method method) throws SocketTimeoutException {
+        private RpcResponse getResponse(RpcRequest request,Method method,String url) throws SocketTimeoutException {
             Gson gson = new GsonBuilder().
                     registerTypeAdapter(Class.class, new ClassCodec())
                     .create();
             String requsetJson = gson.toJson(request);
             //转换原信息为url
-            List<String> urls = nodes.stream().map(node -> Strings.lenientFormat("http://%s:%s", node.getHost(), String.valueOf(node.getPort()))).toList();
-            log.info("消费者获取到的提供者的服务列表为：{}",urls);
-            String url = rpcContext.getLoadBalance().choose(rpcContext.getRouter().rout(urls));
-            log.info("消费者选择的提供者的地址为：{}",url);
+
             try {
                 Response response = okHttpClient.newCall(new Request.Builder()
                         .url(url)
@@ -172,9 +240,10 @@ public class JdkReflect implements reflect {
                 //return TypeUtils.getRpcResponse(method, response);
                 RpcResponse rpcResponse = JSONObject.parseObject(response.body().string(), RpcResponse.class);
                 if (rpcResponse.getErrorCode().equals(RpcExceptionEnum.X002.getErrorCode())) {
-                    throw new SocketTimeoutException("服务调用超时");
+                    //throw new SocketTimeoutException("服务调用超时");
+                    log.info("服务调用超时，url:{}",url);
                 }
-                else return rpcResponse;
+                return rpcResponse;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

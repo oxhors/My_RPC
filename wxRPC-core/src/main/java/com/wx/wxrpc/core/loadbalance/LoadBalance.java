@@ -1,9 +1,11 @@
 package com.wx.wxrpc.core.loadbalance;
 
+import com.wx.wxrpc.core.meta.InstanceMeta;
+
 import java.util.List;
 
 public interface LoadBalance {
-     String choose(List<String> urls);
+     InstanceMeta choose(List<InstanceMeta> urls);
 
 
     //默认实现，返回第一个
